@@ -7,7 +7,7 @@ public class Ball : MonoBehaviour {
     public float speed;
 
     private Rigidbody2D rb;
-    private GameObject[] instructions
+    private GameObject[] instructions;
     private Vector2 velocityBeforeCollision;
 
 
