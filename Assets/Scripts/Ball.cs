@@ -4,43 +4,41 @@ using UnityEngine;
 
 public class Ball : MonoBehaviour {
 
-    public float xSpeed = 0.0f;
-    public float ySpeed = 0.0f;
-    public float speedMultiplier;
-    public float rotationMultiplier;
+    public float speed;
 
     private Rigidbody2D rb;
-    private bool waitingForInput = true;
-    private GameObject[] instructions;
+    private GameObject[] instructions
+    private Vector2 velocityBeforeCollision;
+
 
     // Use this for initialization
     void Start () {
         rb = GetComponent<Rigidbody2D>();
         instructions = GameObject.FindGameObjectsWithTag("Instruction");
+        NewGame();
     }
-	
-	// Update is called once per frame
-	void Update ()
-    {
 
+    // Update is called once per frame
+    void Update()
+    {
+        bool playerStartedGame = Input.GetKeyDown(KeyCode.Space);
+        if (playerStartedGame)
+        {
+            // Initial random move
+            float xInput = Random.Range(-1.0f, 1.0f);
+            float yInput = -Mathf.Sqrt(1 - Mathf.Pow(xInput, 2));
+            Vector2 initialForce = new Vector2(xInput * speed, yInput * speed);
+            rb.AddForce(initialForce);
+
+            ShowInstructions(false);
+        }
+
+        velocityBeforeCollision = rb.velocity;
     }
 
     private void FixedUpdate()
     {
-        bool triggered = Input.GetKeyDown(KeyCode.Space);
-        if (waitingForInput && triggered)
-        {
-            float xInput = Random.Range(-1.0f, 1.0f) * speedMultiplier;
-            float yInput = -Mathf.Sqrt(1 - Mathf.Pow(xInput, 2)) * speedMultiplier;
 
-            xSpeed = xSpeed + xInput;
-            ySpeed = ySpeed + yInput;
-            waitingForInput = false;
-            InstructionsVisibility(false);
-        }
-        Vector2 speedVector = new Vector2(xSpeed, ySpeed);
-        this.transform.position = new Vector2(transform.position.x + xSpeed, transform.position.y + ySpeed);
-        this.transform.Rotate(new Vector3(0.0f, 0.0f, speedVector.magnitude * rotationMultiplier));
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -48,30 +46,37 @@ public class Ball : MonoBehaviour {
         string tag = collision.gameObject.tag;
         if (tag.Equals("Wall"))
         {
-            xSpeed = -xSpeed;
+            BounceFrom(collision);
+
+        }
+        else if (tag.Equals("PongPad"))
+        {
+            BounceFrom(collision);
 
         }
         else if (tag.Equals("Goal"))
         {
             AddScore(collision);
-            EndGame();
-
-        }
-        else if (tag.Equals("PongPad"))
-        {
-            ySpeed = -ySpeed;
-            //var force = collision.contacts[0].normal;
-            //rb.AddForce(force * 2);
+            NewGame();
         }
     }
 
-    private void EndGame()
+    private void BounceFrom(Collision2D collision)
     {
-        xSpeed = 0.0f;
-        ySpeed = 0.0f;
+        foreach (ContactPoint2D contact in collision.contacts)
+        {
+            Vector2 reflection = Vector2.Reflect(velocityBeforeCollision, contact.normal);
+            this.rb.velocity = reflection;
+        }
+    }
+
+    private void NewGame()
+    {
+        rb.velocity = new Vector2(0.0f, 0.0f);
+        rb.angularVelocity = 0.0f;
         transform.position = new Vector2(0.0f, 0.0f);
-        waitingForInput = true;
-        InstructionsVisibility(true);
+        transform.eulerAngles = new Vector3(0.0f, 0.0f, 0.0f);
+        ShowInstructions(true);
     }
 
     private void AddScore(Collision2D collision)
@@ -81,12 +86,11 @@ public class Ball : MonoBehaviour {
         GameObject.FindGameObjectWithTag(opponentScore).GetComponent<Score>().AddScore();
     }
 
-    private void InstructionsVisibility(bool show)
+    private void ShowInstructions(bool show)
     {
         foreach (GameObject instruction in instructions)
         {
             instruction.SetActive(show);
-            //instruction.GetComponent<UnityEngine.UI.Text>().enabled = show;
         }
     }
 }
